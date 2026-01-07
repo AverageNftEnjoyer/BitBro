@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -14,16 +16,70 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useAuth } from "../../context/AuthContext";
+import { AppBackground } from "../../src/ui/AppBackground";
+import { colors } from "../../src/ui/theme";
+
 const avatar = require("../../assets/avatar.png");
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+
+  const getInputValue = (ref: React.RefObject<TextInput | null>): string => {
+    if (Platform.OS === 'web' && ref.current) {
+      const input = ref.current as unknown as HTMLInputElement;
+      return input.value || '';
+    }
+    return '';
+  };
+
+  const handleLogin = async () => {
+    let emailValue = email;
+    let passwordValue = password;
+
+    if (Platform.OS === 'web') {
+      const webEmail = getInputValue(emailRef);
+      const webPassword = getInputValue(passwordRef);
+      if (webEmail) emailValue = webEmail;
+      if (webPassword) passwordValue = webPassword;
+    }
+
+    if (!emailValue || !passwordValue) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await login(emailValue, passwordValue);
+      router.replace("/(tabs)");
+    } catch (error: any) {
+      let message = "An error occurred during login";
+      if (error.code === "auth/user-not-found") {
+        message = "No account found with this email";
+      } else if (error.code === "auth/wrong-password") {
+        message = "Incorrect password";
+      } else if (error.code === "auth/invalid-email") {
+        message = "Invalid email address";
+      } else if (error.code === "auth/invalid-credential") {
+        message = "Invalid email or password";
+      }
+      Alert.alert("Login Error", message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <View style={styles.container}>
+    <AppBackground>
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -53,7 +109,7 @@ export default function LoginScreen() {
             <View style={styles.titleContainer}>
               <Text style={styles.title}>
                 <Text style={styles.titleWhite}>Welcome </Text>
-                <Text style={styles.titleCyan}>Back</Text>
+                <Text style={styles.titleAccent}>Back</Text>
               </Text>
               <Text style={styles.subtitle}>
                 Sign in to continue your{"\n"}fitness journey.
@@ -66,6 +122,7 @@ export default function LoginScreen() {
                 <View style={styles.inputWrapper}>
                   <Ionicons name="mail-outline" size={20} color="rgba(255, 255, 255, 0.6)" style={styles.inputIcon} />
                   <TextInput
+                    ref={emailRef}
                     style={styles.input}
                     placeholder="name@example.com"
                     placeholderTextColor="rgba(255, 255, 255, 0.4)"
@@ -74,6 +131,8 @@ export default function LoginScreen() {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    autoComplete="email"
+                    textContentType="emailAddress"
                   />
                 </View>
               </View>
@@ -83,12 +142,15 @@ export default function LoginScreen() {
                 <View style={styles.inputWrapper}>
                   <Ionicons name="lock-closed-outline" size={20} color="rgba(255, 255, 255, 0.6)" style={styles.inputIcon} />
                   <TextInput
+                    ref={passwordRef}
                     style={styles.input}
                     placeholder="••••••••"
                     placeholderTextColor="rgba(255, 255, 255, 0.4)"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
+                    autoComplete="password"
+                    textContentType="password"
                   />
                   <Pressable onPress={() => setShowPassword(!showPassword)}>
                     <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="rgba(255, 255, 255, 0.4)" style={styles.eyeIcon} />
@@ -101,15 +163,24 @@ export default function LoginScreen() {
               </Pressable>
             </View>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && styles.primaryButtonPressed,
-              ]}
-              onPress={() => router.replace("/(tabs)")}
-            >
-              <Text style={styles.primaryButtonText}>LOGIN</Text>
-            </Pressable>
+            <View style={styles.buttonContainer}>
+              <View style={styles.buttonGlow} />
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  pressed && !isLoading && styles.primaryButtonPressed,
+                  isLoading && styles.primaryButtonDisabled,
+                ]}
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#0B0D12" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>LOGIN</Text>
+                )}
+              </Pressable>
+            </View>
 
             <View style={styles.dividerContainer}>
               <View style={styles.dividerLine} />
@@ -150,15 +221,11 @@ export default function LoginScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </View>
+    </AppBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0a0a0f",
-  },
   safeArea: {
     flex: 1,
   },
@@ -189,7 +256,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   headerLabel: {
-    color: "#00d4ff",
+    color: colors.accent,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 2,
@@ -210,11 +277,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
     borderWidth: 1,
-    borderColor: "rgba(0, 212, 255, 0.3)",
-    shadowColor: "#00d4ff",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    borderColor: colors.accentGlow,
+    boxShadow: `0 0 12px ${colors.accentGlow}`,
     elevation: 8,
     overflow: "hidden",
   },
@@ -237,8 +301,8 @@ const styles = StyleSheet.create({
   titleWhite: {
     color: "#ffffff",
   },
-  titleCyan: {
-    color: "#00d4ff",
+  titleAccent: {
+    color: colors.accent,
   },
   subtitle: {
     fontSize: 14,
@@ -286,28 +350,40 @@ const styles = StyleSheet.create({
     marginTop: -8,
   },
   forgotPasswordText: {
-    color: "#00d4ff",
+    color: colors.accent,
     fontSize: 13,
     fontWeight: "600",
   },
+  buttonContainer: {
+    position: "relative",
+    marginBottom: 24,
+  },
+  buttonGlow: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    right: 4,
+    bottom: -4,
+    borderRadius: 14,
+    backgroundColor: colors.accentGlow,
+  },
   primaryButton: {
-    backgroundColor: "#00d4ff",
+    backgroundColor: colors.accent,
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
-    marginBottom: 24,
-    shadowColor: "#00d4ff",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
     elevation: 8,
   },
   primaryButtonPressed: {
-    backgroundColor: "#00b8e0",
+    backgroundColor: "#E025BF",
     transform: [{ scale: 0.98 }],
   },
+  primaryButtonDisabled: {
+    backgroundColor: colors.accentMuted,
+    elevation: 0,
+  },
   primaryButtonText: {
-    color: "#0a0a0f",
+    color: "#0B0D12",
     fontSize: 16,
     fontWeight: "800",
     letterSpacing: 1,
@@ -369,7 +445,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   footerLink: {
-    color: "#00d4ff",
+    color: colors.accent,
     fontSize: 14,
     fontWeight: "600",
   },

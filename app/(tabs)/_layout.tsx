@@ -1,59 +1,130 @@
+import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+const ACTIVE_COLOR = '#00D4FF';
+const INACTIVE_COLOR = '#6B7280';
+const BAR_BACKGROUND = '#1A1A2E';
+const CENTER_BUTTON_COLOR = '#00D4FF';
 
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
+function TabIcon({ label, focused }: { label: string; focused: boolean }) {
+  return (
+    <Text style={[styles.icon, { color: focused ? ACTIVE_COLOR : INACTIVE_COLOR }]}>
+      {label}
+    </Text>
+  );
+}
+
+function CenterButton() {
+  const router = useRouter();
+
+  return (
+    <Pressable
+      style={styles.centerButtonContainer}
+    >
+      <View style={styles.centerButton}>
+        <Text style={styles.centerButtonText}>+</Text>
+      </View>
+    </Pressable>
+  );
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        tabBarActiveTintColor: ACTIVE_COLOR,
+        tabBarInactiveTintColor: INACTIVE_COLOR,
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabBarLabel,
+        headerShown: false,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+          title: 'Home',
+          tabBarIcon: ({ focused }) => <TabIcon label="🏠" focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="workouts"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Workouts',
+          tabBarIcon: ({ focused }) => <TabIcon label="💪" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="new"
+        options={{
+          title: '',
+          tabBarButton: () => <CenterButton />,
+        }}
+      />
+      <Tabs.Screen
+        name="league"
+        options={{
+          title: 'League',
+          tabBarIcon: ({ focused }) => <TabIcon label="🏆" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ focused }) => <TabIcon label="👤" focused={focused} />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: BAR_BACKGROUND,
+    borderTopWidth: 0,
+    height: 70,
+    paddingBottom: 10,
+    paddingTop: 10,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  tabBarLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  icon: {
+    fontSize: 24,
+  },
+  centerButtonContainer: {
+    top: -30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: CENTER_BUTTON_COLOR,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: CENTER_BUTTON_COLOR,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  centerButtonText: {
+    fontSize: 36,
+    fontWeight: '300',
+    color: '#FFFFFF',
+    marginTop: -2,
+  },
+});

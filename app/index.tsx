@@ -1,11 +1,33 @@
 import { useRouter } from "expo-router";
-import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect } from "react";
+import { ActivityIndicator, ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { useAuth } from "../context/AuthContext";
 
 const bg = require("../assets/images/boot-bg.png");
 
 export default function BootScreen() {
   const router = useRouter();
+  const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace("/(tabs)");
+    }
+  }, [user, isLoading]);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#00d4ff" />
+      </View>
+    );
+  }
+
+  if (user) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
@@ -73,6 +95,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0a0a0f",
   },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
   backgroundImage: {
     flex: 1,
     width: "100%",
@@ -104,10 +130,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     borderWidth: 1,
     borderColor: "rgba(0, 212, 255, 0.3)",
-    shadowColor: "#00d4ff",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    boxShadow: "0 0 10px rgba(0, 212, 255, 0.3)",
     elevation: 5,
   },
   dumbbellIcon: {
@@ -161,10 +184,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     borderRadius: 16,
     alignItems: "center",
-    shadowColor: "#00d4ff",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
+    boxShadow: "0 4px 12px rgba(0, 212, 255, 0.4)",
     elevation: 8,
   },
   primaryButtonPressed: {
